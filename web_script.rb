@@ -5,28 +5,39 @@ require 'date'
 require 'fileutils'
 
 # Define the path to the updated Excel file
-updated_excel_path = 'E:/TOP/assesment/devops_intern_ruby/excel_file/updated_keywords.xlsx'
+updated_excel_path = 'E:\TOP\assesment\4Beats_INTERN_TA_DevOps_Q1_Assignment_ruby\excel_file\updated_keywords.xlsx'
 
 # Define the sheet name to read keywords from
 input_sheet_name = 'sheet1'
 
 # Open the Excel file for reading
-excel_file = Roo::Spreadsheet.open('E:/TOP/assesment/devops_intern_ruby/excel_file/keywords.xlsx')
+excel_file = Roo::Spreadsheet.open('E:\TOP\assesment\4Beats_INTERN_TA_DevOps_Q1_Assignment_ruby\excel_file\keywords.xlsx')
 sheet = excel_file.sheet(input_sheet_name)
 
-# Get the current day to create a new sheet in the updated Excel file
+# Get the current day and time to create a unique sheet name in the updated Excel file
 today = Date.today.strftime("%A")
+timestamp = Time.now.strftime("%H%M%S")
+unique_sheet_name = "#{today}_#{timestamp}"
 
-# Check if the updated Excel file already exists
+# Create a new workbook
+new_workbook = WriteXLSX.new(updated_excel_path + '.tmp')
+
+# Copy existing sheets to the new workbook if the file exists
 if File.exist?(updated_excel_path)
-  # Open the existing file and add a new sheet for today
-  workbook = WriteXLSX.new(updated_excel_path)
-  worksheet = workbook.add_worksheet(today)
-else
-  # Create a new Excel file for writing
-  workbook = WriteXLSX.new(updated_excel_path)
-  worksheet = workbook.add_worksheet(today)
+  existing_workbook = Roo::Spreadsheet.open(updated_excel_path)
+  existing_workbook.sheets.each do |sheet_name|
+    existing_sheet = existing_workbook.sheet(sheet_name)
+    new_sheet = new_workbook.add_worksheet(sheet_name)
+    existing_sheet.each_with_index do |row, row_index|
+      row.each_with_index do |cell, col_index|
+        new_sheet.write(row_index, col_index, cell)
+      end
+    end
+  end
 end
+
+# Add a new sheet with a unique name for today
+worksheet = new_workbook.add_worksheet(unique_sheet_name)
 
 # Read the header row to determine column indices
 header = sheet.row(1)
@@ -91,7 +102,10 @@ begin
   end
 ensure
   # Close the workbook
-  workbook.close
+  new_workbook.close
+
+  # Replace the old workbook with the new one
+  FileUtils.mv(updated_excel_path + '.tmp', updated_excel_path)
 
   # Close the browser
   driver.quit
